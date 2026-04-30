@@ -9,6 +9,8 @@ import javax.swing.JFileChooser;
 import javax.swing.ImageIcon;
 import java.io.File;
 import java.awt.Image;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 public class AdminDashboard extends javax.swing.JFrame {
 
@@ -19,38 +21,53 @@ public class AdminDashboard extends javax.swing.JFrame {
     private void addProductToDatabase() {
         String name = ProductName.getText();
         String priceStr = ProductPrice.getText();
-        String imgPath = ImagePath.getText();
+        String sourcePath = ImagePath.getText().trim();
         String reviews = "0"; 
 
-        if (name.isEmpty() || priceStr.isEmpty() || imgPath.isEmpty()) {
+        if (name.isEmpty() || priceStr.isEmpty() || sourcePath.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please fill all fields");
             return;
         }
 
-        String sql = "INSERT INTO products(p_name, p_price, p_image_path, p_reviews) VALUES(?,?,?,?)";
+        // 1. Define the destination folder and target file
+        File sourceFile = new File(sourcePath);
+        String fileName = sourceFile.getName(); // Extracts "red-hoodie.png"
+        String destinationPath = "C:\\Users\\Administrator\\Documents\\NetBeansProjects\\Thrifty\\src\\image\\" + fileName;
+        File targetFile = new File(destinationPath);
 
-        try (Connection conn = db.mycon(); 
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try {
+            // 2. Physically copy the file to your project folder
+            // This ensures the image exists within the project for other PCs to see
+            Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
-            if (conn == null) return;
+            // 3. Insert into Database using the NEW destination path
+            String sql = "INSERT INTO products(p_name, p_price, p_image_path, p_reviews) VALUES(?,?,?,?)";
 
-            pstmt.setString(1, name);
-            pstmt.setDouble(2, Double.parseDouble(priceStr)); 
-            pstmt.setString(3, imgPath);
-            pstmt.setString(4, reviews);
+            try (Connection conn = db.mycon(); 
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Product Added Successfully!");
+                if (conn == null) return;
 
-            // Clear fields
-            ProductName.setText("");
-            ProductPrice.setText("");
-            ImagePath.setText("");
+                pstmt.setString(1, name);
+                pstmt.setDouble(2, Double.parseDouble(priceStr)); 
+                pstmt.setString(3, destinationPath); // Saving the internal project path
+                pstmt.setString(4, reviews);
 
+                pstmt.executeUpdate();
+                JOptionPane.showMessageDialog(this, "Product Added");
+
+                // Clear fields
+                ProductName.setText("");
+                ProductPrice.setText("");
+                ImagePath.setText("");
+                lblPreview.setIcon(null);
+
+            }
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Please enter a valid number for the price.");
         } catch (Exception e) {
-            System.out.println("Insert Error: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Error saving image: " + e.getMessage());
+            System.out.println("Insert/Copy Error: " + e.getMessage());
         }
     }
     
@@ -102,17 +119,16 @@ public class AdminDashboard extends javax.swing.JFrame {
     private void initComponents() {
 
         bg = new javax.swing.JPanel();
-        jLabel5 = new javax.swing.JLabel();
         jPanel1 = new javax.swing.JPanel();
         jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel6 = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
-        jLabel13 = new javax.swing.JLabel();
+        dashboard = new javax.swing.JLabel();
+        product = new javax.swing.JLabel();
+        orderslist = new javax.swing.JLabel();
+        users = new javax.swing.JLabel();
+        jLabel5 = new javax.swing.JLabel();
         jPanel4 = new javax.swing.JPanel();
         jLabel8 = new javax.swing.JLabel();
         ttlProduct = new javax.swing.JLabel();
@@ -129,14 +145,12 @@ public class AdminDashboard extends javax.swing.JFrame {
         addProduct = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
         lblPreview = new javax.swing.JLabel();
+        jLabel13 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
         bg.setBackground(new java.awt.Color(242, 245, 248));
-        bg.setMinimumSize(new java.awt.Dimension(800, 500));
-        bg.setPreferredSize(new java.awt.Dimension(800, 500));
         bg.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
-        bg.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 490, 800, 10));
 
         jPanel1.setBackground(new java.awt.Color(60, 139, 153));
         jPanel1.setMinimumSize(new java.awt.Dimension(220, 500));
@@ -179,45 +193,67 @@ public class AdminDashboard extends javax.swing.JFrame {
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/sign-out-alt.png"))); // NOI18N
         jLabel3.setText("  Logout");
+        jLabel3.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jLabel3MouseClicked(evt);
+            }
+        });
         jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 450, 150, -1));
 
-        jLabel4.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel4.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/house-chimney (1).png"))); // NOI18N
-        jLabel4.setText("  Dashboard");
-        jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 140, 170, -1));
+        dashboard.setBackground(new java.awt.Color(242, 245, 248));
+        dashboard.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        dashboard.setForeground(new java.awt.Color(255, 255, 255));
+        dashboard.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        dashboard.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/house-chimney (1).png"))); // NOI18N
+        dashboard.setText("  Dashboard");
+        dashboard.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                dashboardMouseClicked(evt);
+            }
+        });
+        jPanel1.add(dashboard, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 140, 170, -1));
 
-        jLabel6.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel6.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel6.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/box-open-full.png"))); // NOI18N
-        jLabel6.setText("  Manage Products");
-        jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 190, 210, -1));
+        product.setBackground(new java.awt.Color(242, 245, 248));
+        product.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        product.setForeground(new java.awt.Color(255, 255, 255));
+        product.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        product.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/box-open-full.png"))); // NOI18N
+        product.setText("  Manage Products");
+        product.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                productMouseClicked(evt);
+            }
+        });
+        jPanel1.add(product, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 190, 210, -1));
 
-        jLabel7.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel7.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel7.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel7.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/task-checklist.png"))); // NOI18N
-        jLabel7.setText("  Orders List");
-        jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 240, 160, -1));
+        orderslist.setBackground(new java.awt.Color(242, 245, 248));
+        orderslist.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        orderslist.setForeground(new java.awt.Color(255, 255, 255));
+        orderslist.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        orderslist.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/task-checklist.png"))); // NOI18N
+        orderslist.setText("  Orders List");
+        orderslist.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                orderslistMouseClicked(evt);
+            }
+        });
+        jPanel1.add(orderslist, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 240, 160, -1));
 
-        jLabel9.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel9.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel9.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel9.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/users-alt.png"))); // NOI18N
-        jLabel9.setText("  User Management");
-        jPanel1.add(jLabel9, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 290, 220, -1));
+        users.setBackground(new java.awt.Color(242, 245, 248));
+        users.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        users.setForeground(new java.awt.Color(255, 255, 255));
+        users.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        users.setIcon(new javax.swing.ImageIcon(getClass().getResource("/admin/icons/users-alt.png"))); // NOI18N
+        users.setText("  User Management");
+        users.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                usersMouseClicked(evt);
+            }
+        });
+        jPanel1.add(users, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 290, 220, -1));
 
         bg.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, 500));
-
-        jLabel13.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
-        jLabel13.setText("Dashboard");
-        bg.add(jLabel13, new org.netbeans.lib.awtextra.AbsoluteConstraints(240, 20, 100, -1));
+        bg.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 490, 800, 10));
 
         jPanel4.setBackground(new java.awt.Color(60, 139, 153));
         jPanel4.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
@@ -330,7 +366,7 @@ public class AdminDashboard extends javax.swing.JFrame {
                 ProductPriceActionPerformed(evt);
             }
         });
-        bg.add(ProductPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 290, 270, -1));
+        bg.add(ProductPrice, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 310, 270, -1));
 
         ImagePath.setBackground(new java.awt.Color(242, 245, 248));
         ImagePath.setText(" ");
@@ -349,7 +385,7 @@ public class AdminDashboard extends javax.swing.JFrame {
                 ProductNameActionPerformed(evt);
             }
         });
-        bg.add(ProductName, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 240, 270, -1));
+        bg.add(ProductName, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 250, 270, -1));
 
         addProduct.setBackground(new java.awt.Color(60, 139, 153));
         addProduct.setForeground(new java.awt.Color(255, 255, 255));
@@ -360,7 +396,7 @@ public class AdminDashboard extends javax.swing.JFrame {
                 addProductActionPerformed(evt);
             }
         });
-        bg.add(addProduct, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 350, -1, -1));
+        bg.add(addProduct, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 370, -1, -1));
 
         jPanel3.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(0, 0, 0)));
 
@@ -377,15 +413,19 @@ public class AdminDashboard extends javax.swing.JFrame {
 
         bg.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(540, 190, 240, 230));
 
+        jLabel13.setFont(new java.awt.Font("Segoe UI", 1, 18)); // NOI18N
+        jLabel13.setText("Dashboard");
+        bg.add(jLabel13, new org.netbeans.lib.awtextra.AbsoluteConstraints(250, 20, 100, -1));
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(bg, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+            .addComponent(bg, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(bg, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
+            .addComponent(bg, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
         pack();
@@ -419,6 +459,46 @@ public class AdminDashboard extends javax.swing.JFrame {
         addProductToDatabase();
     }//GEN-LAST:event_addProductActionPerformed
 
+    private void jLabel3MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel3MouseClicked
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(this, 
+            "Are you sure you want to logout?", "Logout", 
+            javax.swing.JOptionPane.YES_NO_OPTION);
+    
+        if (confirm == javax.swing.JOptionPane.YES_OPTION) {
+            thrifty.Signin loginFrame = new thrifty.Signin(); 
+            loginFrame.setVisible(true);
+            loginFrame.pack();
+            loginFrame.setLocationRelativeTo(null); // Center it
+
+            // 3. Close the current Dashboard
+            this.dispose(); 
+        }
+    }//GEN-LAST:event_jLabel3MouseClicked
+
+    private void dashboardMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_dashboardMouseClicked
+        AdminDashboard dashboard = new AdminDashboard(); 
+        dashboard.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_dashboardMouseClicked
+
+    private void productMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_productMouseClicked
+        Products manage = new Products(); 
+        manage.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_productMouseClicked
+
+    private void orderslistMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_orderslistMouseClicked
+        OrdersList list = new OrdersList(); 
+        list.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_orderslistMouseClicked
+
+    private void usersMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_usersMouseClicked
+        Users manage = new Users(); 
+        manage.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_usersMouseClicked
+
     /**
      * @param args the command line arguments
      */
@@ -445,6 +525,7 @@ public class AdminDashboard extends javax.swing.JFrame {
             java.util.logging.Logger.getLogger(AdminDashboard.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
+        //</editor-fold>
 
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
@@ -461,18 +542,15 @@ public class AdminDashboard extends javax.swing.JFrame {
     private javax.swing.JButton addProduct;
     private javax.swing.JPanel bg;
     private javax.swing.JButton btnBrowse;
+    private javax.swing.JLabel dashboard;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel12;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
@@ -480,8 +558,11 @@ public class AdminDashboard extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
     private javax.swing.JLabel lblPreview;
+    private javax.swing.JLabel orderslist;
+    private javax.swing.JLabel product;
     private javax.swing.JLabel ttlOrders;
     private javax.swing.JLabel ttlProduct;
     private javax.swing.JLabel ttleRevenue;
+    private javax.swing.JLabel users;
     // End of variables declaration//GEN-END:variables
 }

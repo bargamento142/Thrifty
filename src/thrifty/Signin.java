@@ -235,46 +235,51 @@ public class Signin extends javax.swing.JFrame {
         String userEmail = jTextField1.getText();
         String userPass = String.valueOf(jPasswordField1.getPassword());
 
+        // 1. Basic validation
         if (userEmail.isEmpty() || userPass.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter both Email and Password.");
             return;
         }
 
-        try {
-            // 1. Hash the user input so it matches the database format
-            // Your database uses a 12-character substring of the SHA-256 hash
+        // Use try-with-resources to ensure connection closes even if an error occurs
+        try (Connection con = config.db.mycon()) {
+
+            // 2. Safety check: Exit if connection failed (prevents NullPointerException)
+            if (con == null) return; 
+
+            // 3. Hash the user input (matching your 12-character substring format)
             String hashedInput = hashPassword(userPass).substring(0, 12);
 
-            Connection con = config.db.mycon(); 
             String sql = "SELECT * FROM users WHERE u_email = ? AND u_pass = ?";
 
-            PreparedStatement pst = con.prepareStatement(sql);
-            pst.setString(1, userEmail);
-            pst.setString(2, hashedInput); // Using the hashed password here
+            try (PreparedStatement pst = con.prepareStatement(sql)) {
+                pst.setString(1, userEmail);
+                pst.setString(2, hashedInput);
 
-            ResultSet rs = pst.executeQuery();
+                try (ResultSet rs = pst.executeQuery()) {
+                    if (rs.next()) {
+                        String name = rs.getString("u_fname"); 
+                        String role = rs.getString("u_role");
 
-            if (rs.next()) {
-                String name = rs.getString("u_fname"); 
-                String role = rs.getString("u_role");
+                        JOptionPane.showMessageDialog(this, "Welcome back, " + name + "!");
 
-                JOptionPane.showMessageDialog(this, "Welcome back, " + name + "!");
+                        // 4. Dashboard Redirection
+                        try {
+                            if (role.equalsIgnoreCase("Admin")) {
+                                new AdminDashboard().setVisible(true);
+                            } else {
+                                new CustomerDashboard().setVisible(true);
+                            }
+                            this.dispose(); // Close login window
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            JOptionPane.showMessageDialog(this, "Dashboard Error: Check if your images exist in /image/ folder.");
+                        }
 
-                try {
-                    if (role.equalsIgnoreCase("Admin")) {
-                        new AdminDashboard().setVisible(true);
                     } else {
-                        new CustomerDashboard().setVisible(true);
+                        JOptionPane.showMessageDialog(this, "Invalid Email or Password.");
                     }
-                    this.dispose();
-                } catch (Exception e) {
-                    // This catches the ImageIcon NullPointerException we saw earlier
-                    e.printStackTrace();
-                    JOptionPane.showMessageDialog(this, "Dashboard Error: Check if your images exist in /image/ folder.");
                 }
-
-            } else {
-                JOptionPane.showMessageDialog(this, "Invalid Email or Password.");
             }
 
         } catch (Exception e) {

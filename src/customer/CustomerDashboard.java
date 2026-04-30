@@ -18,7 +18,12 @@ public class CustomerDashboard extends javax.swing.JFrame {
 
     public CustomerDashboard() {
         initComponents();
-        displayAllProducts();
+
+        productContainer.setLayout(new java.awt.GridLayout(0, 4, 8, 8));
+        jScrollPane1.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        jScrollPane1.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        
+        displayAllProducts();     
     }
     
     public ImageIcon scaleImage(String path) {
@@ -38,11 +43,15 @@ public class CustomerDashboard extends javax.swing.JFrame {
     public void displayAllProducts() {
         productContainer.removeAll(); 
 
-        try {
-            // Ensure the path to your .db file is correct
-            Connection conn = DriverManager.getConnection("jdbc:sqlite:db/thrifty.db");
-            Statement st = conn.createStatement();
-            ResultSet rs = st.executeQuery("SELECT * FROM products");
+        try (Connection conn = config.db.mycon(); 
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT *, (SELECT COUNT(*) "
+                     + "FROM orders "
+                     + "WHERE orders.p_name = products.p_name "
+                     + "AND status = 'Completed') "
+                     + "as actual_sold FROM products")) {
+            
+            if (conn == null) return;
 
             while (rs.next()) {
                 String name = rs.getString("p_name");
@@ -54,10 +63,12 @@ public class CustomerDashboard extends javax.swing.JFrame {
                 productContainer.add(newCard);
             }
 
+            // 4. Force the UI to recalculate the height based on the new products
             productContainer.revalidate();
             productContainer.repaint();
+
         } catch (Exception e) {
-            System.out.println("Display Error: " + e.getMessage());
+            e.printStackTrace(); 
         }
     }
     
@@ -96,8 +107,9 @@ public class CustomerDashboard extends javax.swing.JFrame {
         btnAdd.setForeground(Color.WHITE);
         btnAdd.addActionListener(e -> {
             // Pass data to Detail page
-            ItemDetail detail = new ItemDetail(name, "₱ " + price, imgPath);
+            ItemDetail detail = new ItemDetail(name, "₱ " + price, imgPath, CustomerDashboard.this);
             detail.setVisible(true);
+            CustomerDashboard.this.setVisible(false);
         });
         card.add(btnAdd, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 175, 35, 25));
 
@@ -115,11 +127,11 @@ public class CustomerDashboard extends javax.swing.JFrame {
         jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel6 = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        jLabel9 = new javax.swing.JLabel();
+        logout = new javax.swing.JLabel();
+        shop = new javax.swing.JLabel();
+        mycart = new javax.swing.JLabel();
+        order = new javax.swing.JLabel();
+        profile = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         jTextField1 = new javax.swing.JTextField();
         jComboBox1 = new javax.swing.JComboBox<>();
@@ -167,45 +179,70 @@ public class CustomerDashboard extends javax.swing.JFrame {
         jLabel2.setText("Thrifty");
         jPanel1.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(56, 11, 71, 40));
 
-        jLabel3.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel3.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel3.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/sign-out-alt.png"))); // NOI18N
-        jLabel3.setText("  Logout");
-        jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 450, 160, -1));
+        logout.setBackground(new java.awt.Color(242, 245, 248));
+        logout.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        logout.setForeground(new java.awt.Color(255, 255, 255));
+        logout.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        logout.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/sign-out-alt.png"))); // NOI18N
+        logout.setText("  Logout");
+        logout.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                logoutMouseClicked(evt);
+            }
+        });
+        jPanel1.add(logout, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 450, 160, -1));
 
-        jLabel4.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel4.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/store-alt (1).png"))); // NOI18N
-        jLabel4.setText("  Shop");
-        jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 140, 130, -1));
+        shop.setBackground(new java.awt.Color(242, 245, 248));
+        shop.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        shop.setForeground(new java.awt.Color(255, 255, 255));
+        shop.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        shop.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/store-alt (1).png"))); // NOI18N
+        shop.setText("  Shop");
+        shop.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                shopMouseClicked(evt);
+            }
+        });
+        jPanel1.add(shop, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 140, 130, -1));
 
-        jLabel6.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel6.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel6.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel6.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel6.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/shopping-cart.png"))); // NOI18N
-        jLabel6.setText("  My Cart");
-        jPanel1.add(jLabel6, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 190, 150, -1));
+        mycart.setBackground(new java.awt.Color(242, 245, 248));
+        mycart.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        mycart.setForeground(new java.awt.Color(255, 255, 255));
+        mycart.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        mycart.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/shopping-cart.png"))); // NOI18N
+        mycart.setText("  My Cart");
+        mycart.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                mycartMouseClicked(evt);
+            }
+        });
+        jPanel1.add(mycart, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 190, 150, -1));
 
-        jLabel7.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel7.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel7.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel7.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel7.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/task-checklist.png"))); // NOI18N
-        jLabel7.setText("  Orders");
-        jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 240, 150, -1));
+        order.setBackground(new java.awt.Color(242, 245, 248));
+        order.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        order.setForeground(new java.awt.Color(255, 255, 255));
+        order.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        order.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/task-checklist.png"))); // NOI18N
+        order.setText("  Orders");
+        order.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                orderMouseClicked(evt);
+            }
+        });
+        jPanel1.add(order, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 240, 150, -1));
 
-        jLabel9.setBackground(new java.awt.Color(242, 245, 248));
-        jLabel9.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
-        jLabel9.setForeground(new java.awt.Color(255, 255, 255));
-        jLabel9.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel9.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/user.png"))); // NOI18N
-        jLabel9.setText("  Profile");
-        jPanel1.add(jLabel9, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 290, 150, -1));
+        profile.setBackground(new java.awt.Color(242, 245, 248));
+        profile.setFont(new java.awt.Font("Segoe UI", 1, 16)); // NOI18N
+        profile.setForeground(new java.awt.Color(255, 255, 255));
+        profile.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        profile.setIcon(new javax.swing.ImageIcon(getClass().getResource("/customer/icons/user.png"))); // NOI18N
+        profile.setText("  Profile");
+        profile.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                profileMouseClicked(evt);
+            }
+        });
+        jPanel1.add(profile, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 290, 150, -1));
 
         bg.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, 500));
         bg.add(jLabel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 490, 800, 10));
@@ -271,6 +308,46 @@ public class CustomerDashboard extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextField1ActionPerformed
 
+    private void logoutMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_logoutMouseClicked
+        int confirm = javax.swing.JOptionPane.showConfirmDialog(this, 
+            "Are you sure you want to logout?", "Logout", 
+            javax.swing.JOptionPane.YES_NO_OPTION);
+    
+        if (confirm == javax.swing.JOptionPane.YES_OPTION) {
+            thrifty.Signin loginFrame = new thrifty.Signin(); 
+            loginFrame.setVisible(true);
+            loginFrame.pack();
+            loginFrame.setLocationRelativeTo(null); // Center it
+
+            // 3. Close the current Dashboard
+            this.dispose(); 
+        }
+    }//GEN-LAST:event_logoutMouseClicked
+
+    private void mycartMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_mycartMouseClicked
+        Cart mycart = new Cart(); 
+        mycart.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_mycartMouseClicked
+
+    private void shopMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_shopMouseClicked
+        CustomerDashboard dashboard = new CustomerDashboard(); 
+        dashboard.setVisible(true);
+        this.dispose(); 
+    }//GEN-LAST:event_shopMouseClicked
+
+    private void orderMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_orderMouseClicked
+        Orders list = new Orders(); 
+        list.setVisible(true);
+        this.dispose();
+    }//GEN-LAST:event_orderMouseClicked
+
+    private void profileMouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_profileMouseClicked
+        Profile user = new Profile(); 
+        user.setVisible(true);
+        this.dispose();
+    }//GEN-LAST:event_profileMouseClicked
+
     /**
      * @param args the command line arguments
      */
@@ -314,16 +391,16 @@ public class CustomerDashboard extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
-    private javax.swing.JLabel jLabel7;
-    private javax.swing.JLabel jLabel9;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JTextField jTextField1;
+    private javax.swing.JLabel logout;
+    private javax.swing.JLabel mycart;
+    private javax.swing.JLabel order;
     private javax.swing.JPanel productContainer;
+    private javax.swing.JLabel profile;
+    private javax.swing.JLabel shop;
     // End of variables declaration//GEN-END:variables
 }
